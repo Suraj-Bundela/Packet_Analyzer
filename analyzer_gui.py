@@ -12,6 +12,50 @@ root.geometry("1000x700")
 title = tk.Label(root, text="Network Traffic Analyzer", font=("Arial", 16))
 title.pack(pady=10)
 
+filter_frame = tk.Frame(root)
+filter_frame.pack(pady=5)
+
+tk.Label(
+    filter_frame,
+    text="Filter IP:"
+).pack(side="left")
+
+filter_entry = tk.Entry(
+    filter_frame,
+    width=20
+)
+filter_entry.pack(side="left", padx=5)
+
+def apply_filter():
+
+    ip = filter_entry.get().strip()
+
+    analyzer_core.set_filter(ip)
+
+    print("Filter Applied:", ip)
+
+
+def clear_filter():
+
+    analyzer_core.clear_filter()
+
+    filter_entry.delete(0, tk.END)
+
+    print("Filter Cleared")
+
+apply_button = tk.Button(
+    filter_frame,
+    text="Apply Filter",
+    command=apply_filter
+)
+apply_button.pack(side="left", padx=5)
+
+clear_button = tk.Button(
+    filter_frame,
+    text="Clear Filter",
+    command=clear_filter
+)
+clear_button.pack(side="left", padx=5)
 
 # START PACKET CAPTURE
 def start_capture():
@@ -24,9 +68,28 @@ def start_capture():
     t.daemon = True
     t.start()
 
+def stop_capture():
 
-start_button = tk.Button(root, text="Start Capture", command=start_capture)
-start_button.pack(pady=5)
+    analyzer_core.stop_sniffing()
+
+button_frame = tk.Frame(root)
+button_frame.pack(pady=5)
+
+start_button = tk.Button(
+    button_frame,
+    text="Start Capture",
+    command=start_capture
+)
+start_button.pack(side="left", padx=5)
+
+stop_button = tk.Button(
+    button_frame,
+    text="Stop Capture",
+    command=stop_capture,
+    bg="red",
+    fg="white"
+)
+stop_button.pack(side="left", padx=5)
 
 
 # DEVICE SCAN
@@ -34,15 +97,51 @@ def scan_devices():
 
     devices = analyzer_core.scan_network()
 
+    print("Devices returned:", len(devices))
+
+    for device in devices:
+        print(device)
+
     for row in device_tree.get_children():
         device_tree.delete(row)
 
     for device in devices:
-        device_tree.insert("", "end", values=(device["ip"], device["mac"]))
+        device_tree.insert(
+            "",
+            "end",
+            values=(device["ip"], device["mac"])
+        )
 
+
+def filter_selected_device():
+
+    selected = device_tree.selection()
+
+    if not selected:
+        return
+
+    item = device_tree.item(selected[0])
+
+    ip = item["values"][0]
+
+    filter_entry.delete(0, tk.END)
+    filter_entry.insert(0, ip)
+
+    analyzer_core.set_filter(ip)
+
+    print("Filtering:", ip)
+
+filter_device_button = tk.Button(
+    root,
+    text="Filter Selected Device",
+    command=filter_selected_device
+)
+filter_device_button.pack(pady=5)
 
 scan_button = tk.Button(root, text="Scan Network Devices", command=scan_devices)
 scan_button.pack(pady=5)
+
+
 
 
 # PACKET TABLE
