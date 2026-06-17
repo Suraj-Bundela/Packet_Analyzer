@@ -1,9 +1,13 @@
 {
-    "5c-26-0a-27-65-63": {
-        "name": "PC1",
+    "d0:39:57:b1:44:0f": {
+        "trusted": true,
+        "name": "My  Laptop"
+    },
+    "b0:19:21:1a:1b:85": {
+        "name": "HP Lab Router",
         "trusted": true
     },
-    "ff-ff-ff-ff-ff-ff": {
-        "trusted": true
+    "ec:75:0c:57:cc:4a": {
+        "name": "New Lab Router1"
     }
 }

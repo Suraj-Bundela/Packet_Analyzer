@@ -1,5 +1,5 @@
 from scapy.all import sniff, IP, TCP, UDP, ICMP, ARP, Ether, srp
-
+import socket
 packet_count = 0
 tcp_count = 0
 udp_count = 0
@@ -103,8 +103,17 @@ def clear_filter():
     packet_filter_ip = None
 
 # NETWORK DEVICE SCANNER
-def scan_network(network_range="192.168.0.0/24"):
+def scan_network():
 
+    # Get current IP
+    hostname = socket.gethostname()
+    local_ip = socket.gethostbyname(hostname)
+
+    # Build network automatically
+    parts = local_ip.split(".")
+    network_range = ".".join(parts[:3]) + ".0/24"
+
+    print("Local IP:", local_ip)
     print("Scanning:", network_range)
 
     arp = ARP(pdst=network_range)
@@ -115,7 +124,7 @@ def scan_network(network_range="192.168.0.0/24"):
     result = srp(
         packet,
         timeout=5,
-        verbose=True,
+        verbose=False,
         iface="Wi-Fi"
     )[0]
 
@@ -124,6 +133,7 @@ def scan_network(network_range="192.168.0.0/24"):
     devices = []
 
     for sent, received in result:
+
         print(received.psrc, received.hwsrc)
 
         devices.append({
