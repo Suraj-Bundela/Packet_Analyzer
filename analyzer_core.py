@@ -1,10 +1,69 @@
-from scapy.all import sniff, IP, TCP, UDP, ICMP, ARP, Ether, srp
+from scapy.all import sniff, IP, TCP, UDP, ICMP, ARP, Ether, srp, get_if_addr
 import socket
+from scapy.layers.dns import DNS, DNSRR
+from scapy.all import IFACES
+dns_cache = {}
 packet_count = 0
 tcp_count = 0
 udp_count = 0
 icmp_count = 0
 packet_filter_ip = None
+host_cache = {}
+selected_interface = None
+
+def get_network_range():
+
+    ip = get_if_addr(selected_interface)
+
+    print("Interface IP:", ip)
+
+    parts = ip.split(".")
+
+    return ".".join(parts[:3]) + ".0/24"
+
+def get_interfaces():
+
+    interfaces = []
+
+    for iface in IFACES.values():
+
+        try:
+
+            interfaces.append(
+                iface.name
+            )
+
+        except:
+            pass
+
+    return interfaces
+
+
+def set_interface(iface):
+
+    global selected_interface
+
+    selected_interface = iface
+
+    print(
+        f"Selected Interface: {iface}"
+    )
+
+
+def get_hostname(ip):
+
+    if ip in host_cache:
+        return host_cache[ip]
+
+    try:
+        hostname = socket.gethostbyaddr(ip)[0]
+
+    except:
+        hostname = ip
+
+    host_cache[ip] = hostname
+
+    return hostname
 
 def analyze_packet(packet, gui_callback):
 
@@ -19,6 +78,32 @@ def analyze_packet(packet, gui_callback):
 
     src_ip = packet[IP].src
     dst_ip = packet[IP].dst
+    if packet.haslayer(DNSRR):
+
+        try:
+
+            dns_name = packet[DNSRR].rrname.decode().rstrip(".")
+            dns_ip = packet[DNSRR].rdata
+
+            if isinstance(dns_ip, str):
+
+                dns_cache[dns_ip] = dns_name
+
+                print(
+                    f"DNS Cached: {dns_name} -> {dns_ip}"
+                )
+
+        except Exception as e:
+            print(e)
+    
+    dst_host = dns_cache.get(
+    dst_ip,
+    get_hostname(dst_ip)
+    )
+    if dst_ip in dns_cache:
+        print(
+            f"Using DNS cache: {dst_ip} -> {dns_cache[dst_ip]}"
+        )
 
     # Apply filter only if one exists
     if packet_filter_ip:
@@ -57,6 +142,7 @@ def analyze_packet(packet, gui_callback):
         packet_count,
         src_ip,
         dst_ip,
+        dst_host,
         protocol,
         src_port,
         dst_port,
@@ -75,10 +161,10 @@ def start_sniffing(gui_callback):
     sniffing = True
 
     sniff(
-        prn=lambda packet: analyze_packet(packet, gui_callback),
-        store=False,
-        iface="Wi-Fi",
-        stop_filter=lambda x: not sniffing
+    prn=lambda packet: analyze_packet(packet, gui_callback),
+    store=False,
+    iface=selected_interface,
+    stop_filter=lambda x: not sniffing
     )
 
 
@@ -110,8 +196,7 @@ def scan_network():
     local_ip = socket.gethostbyname(hostname)
 
     # Build network automatically
-    parts = local_ip.split(".")
-    network_range = ".".join(parts[:3]) + ".0/24"
+    network_range = get_network_range()
 
     print("Local IP:", local_ip)
     print("Scanning:", network_range)
@@ -122,10 +207,10 @@ def scan_network():
     packet = ether / arp
 
     result = srp(
-        packet,
-        timeout=5,
-        verbose=False,
-        iface="Wi-Fi"
+    packet,
+    timeout=5,
+    verbose=False,
+    iface=selected_interface
     )[0]
 
     print("Results:", len(result))

@@ -61,6 +61,9 @@ left_toolbar.pack(side="left")
 
 right_toolbar = tk.Frame(toolbar)
 right_toolbar.pack(side="right")
+interfaces = analyzer_core.get_interfaces()
+
+selected_interface = tk.StringVar()
 
 paned = tk.PanedWindow(
     root,
@@ -72,8 +75,43 @@ paned.pack(
     expand=True
 )
 
+def interface_changed(event):
 
+    analyzer_core.set_interface(
+        selected_interface.get()
+    )
 
+    status_label.config(
+        text=f"Interface: {selected_interface.get()}"
+    )
+
+ttk.Label(
+    right_toolbar,
+    text="Interface:"
+).pack(side="left", padx=(0,5))
+
+interface_combo = ttk.Combobox(
+    right_toolbar,
+    textvariable=selected_interface,
+    values=interfaces,
+    width=30,
+    state="readonly"
+)
+
+if interfaces:
+
+    interface_combo.current(0)
+
+    analyzer_core.set_interface(
+        selected_interface.get()
+    )
+
+interface_combo.pack(side="left", padx=5)
+
+interface_combo.bind(
+    "<<ComboboxSelected>>",
+    interface_changed
+)
 
 ttk.Label(
     right_toolbar,
@@ -239,7 +277,7 @@ scan_button.pack(side="left", padx=5)
 
 
 # PACKET TABLE
-columns = ("id", "src", "dst", "protocol", "sport", "dport", "size")
+columns = ("id", "src", "dst", "host", "protocol", "sport", "dport", "size")
 
 table_frame = tk.Frame(root)
 
@@ -248,6 +286,7 @@ tree = ttk.Treeview(table_frame, columns=columns, show="headings")
 tree.heading("id", text="Packet")
 tree.heading("src", text="Source IP")
 tree.heading("dst", text="Destination IP")
+tree.heading("host", text="Host")
 tree.heading("protocol", text="Protocol")
 tree.heading("sport", text="Src Port")
 tree.heading("dport", text="Dst Port")
@@ -469,6 +508,7 @@ def update_gui(
         packet_id,
         src_ip,
         dst_ip,
+        dst_host,
         protocol,
         src_port,
         dst_port,
@@ -485,6 +525,7 @@ def update_gui(
             packet_id,
             src_ip,
             dst_ip,
+            dst_host,
             protocol,
             src_port,
             dst_port,
